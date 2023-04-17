@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! This contains types that may change at any time without a breaking library change,
+//! but must be exposed so macros can reference them.
+//! If you're naming types from here yourself, beware.
+
 use core::marker::PhantomData;
 use core::ptr::NonNull;
 
@@ -73,6 +77,9 @@ impl<Trait: ?Sized + PlainDyn> SelfPtr<*mut Trait> {
 /// - You cannot soundly swap an unowned unsized object, so the lifetime of `Self` doesn't have to
 ///   reflect the lifetime of the trait object.
 ///
+/// Avoid naming this type. You probably shouldn't be storing references to this directly,
+/// but might be necessary for isolated cases. For those, prefer writing `&(impl Trait + ?Sized)`.
+///
 /// ```compile_fail
 // #[doc = doctest_use_private!(Ref)]
 /// # use tinydyn::{tinydyn_trait, Ref};
@@ -89,6 +96,9 @@ impl<Trait: ?Sized + PlainDyn> SelfPtr<*mut Trait> {
 ///
 /// [`Ref`]: super::Ref
 /// [`RefMut`]: super::RefMut
+// TODO(kupiakos): try to hide this from the public interface entirely and require going through
+//                 `<Ref<dyn Trait> as Deref>::Target`, to allow that `Target` to change without
+//                 causing a library breaking change.
 #[repr(C)]
 pub struct DynTarget<Trait: ?Sized + DynTrait> {
     // The lifetime of `ptr` cannot escape this `DynTarget`
@@ -142,19 +152,17 @@ impl<Trait: ?Sized + DynTrait> DynTarget<Trait> {
     }
 }
 
-/// The [`PlainDyn::Vtable`] for traits without a vtable.
+/// The [`PlainDyn::StaticVTable`] for traits without a vtable.
 ///
 /// This is for traits that have one function defined, and so can store a function pointer
 /// instead of a pointer to a vtable.
 #[derive(Clone, Copy)]
 pub struct InlineVTable;
 
-/// Unsafely [`transmute`] from `Src` to `Dst` with a transmute check at runtime,
+/// Unsafely `transmute` from `Src` to `Dst` with a transmute check at runtime,
 /// and not compile time.
 ///
 /// The panic *should* always be compiled out. If it isn't, something's wrong.
-///
-/// [`transmute']: core::mem::tranmsute
 #[inline(always)]
 pub unsafe fn runtime_layout_verified_transmute<Src, Dst>(src: Src) -> Dst {
     assert!(

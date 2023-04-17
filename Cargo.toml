@@ -15,9 +15,10 @@
 [package]
 name = "tinydyn"
 version = "0.1.0"
+description = "A lightweight dynamic dispatch library"
+license = "Apache-2.0"
+repository = "https://github.com/kupiakos/tinydyn/"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 tinydyn_derive = { path = "derive", version = "0.1.0" }

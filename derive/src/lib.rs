@@ -615,35 +615,7 @@ fn tinydyn_mod_impl(trait_item: ItemTrait) -> Result<TokenStream> {
     TinydynImplModule::new(trait_item).map(ToTokens::into_token_stream)
 }
 
-/// Marks a local trait as tinydyn-aware, letting it be used inside of [`Ref`] and [`RefMut`].
-///
-/// This implements [`DynTrait`] and [`PlainDyn`] for the targeted trait object.
-/// This defines an alternate smaller vtable layout that erases layout and drop information.
-///
-/// While you *can* use tinydyn-aware traits as regular `dyn Trait` trait objects, it's not
-/// recommended as it creates two vtables.
-///
-/// # Example
-///
-/// ```ignore
-/// use tinydyn::{self, tinydyn};
-///
-/// #[tinydyn]
-/// trait Foo {
-///     fn blah(&self) -> i32;
-///     fn blue(&self) -> i32 { 10 }
-/// }
-///
-/// impl Foo for i32 {
-///     fn blah(&self) -> i32 { *self + 1 }
-/// }
-///
-/// // Use `dyn Foo` to reference the trait `Foo` even though it never creates the
-/// // regular vtable for `dyn Foo`.
-/// let x: tinydyn::Ref<dyn Foo> = Ref::new(&15);
-/// assert_eq!(x.blah(), 16);
-/// assert_eq!(x.blue(), 10);
-/// ```
+/// This trait is `tinydyn`-compatible.
 #[proc_macro_attribute]
 pub fn tinydyn(
     params: proc_macro::TokenStream,

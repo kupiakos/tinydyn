@@ -1,0 +1,60 @@
+digraph G {
+    rankdir=LR;
+    node [shape=plaintext,fontname="Monospace"]
+
+    woofer [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" WIDTH="200" CELLPADDING="5">
+        <TR><TD BGCOLOR="#94d4ae" COLSPAN="2" WIDTH="200">reginald: Woofer</TD></TR>
+        <TR HEIGHT="0" WIDTH = "200" FIXEDSIZE="TRUE"><TD BORDER="0" CELLPADDING="0" PORT="head" HEIGHT="0" COLSPAN="2"></TD></TR>
+        <TR><TD ALIGN="LEFT">woof_freq: u16</TD><TD ALIGN="RIGHT">343</TD></TR>
+    </TABLE>>];
+    woofer2 [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" WIDTH="200" CELLPADDING="5">
+        <TR><TD BGCOLOR="#94d4ae" COLSPAN="2" WIDTH="200">chester: Woofer</TD></TR>
+        <TR HEIGHT="0" WIDTH = "200" FIXEDSIZE="TRUE"><TD BORDER="0" CELLPADDING="0" PORT="head" HEIGHT="0" COLSPAN="2"></TD></TR>
+        <TR><TD ALIGN="LEFT">woof_freq: u16</TD><TD ALIGN="RIGHT">200</TD></TR>
+    </TABLE>>];
+    pupper [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" WIDTH="200" CELLPADDING="5">
+        <TR><TD BGCOLOR="#94d4ae" COLSPAN="2" WIDTH="200">bluey: Pupper</TD></TR>
+        <TR HEIGHT="0" WIDTH = "200" FIXEDSIZE="TRUE"><TD BORDER="0" CELLPADDING="0" PORT="head" HEIGHT="0" COLSPAN="2"></TD></TR>
+        <TR><TD ALIGN="LEFT">age: u32</TD><TD ALIGN="RIGHT">7</TD></TR>
+        <TR><TD ALIGN="LEFT" ROWSPAN="2">name: &amp;str</TD><TD ALIGN="RIGHT">0xB0003000</TD></TR>
+        <TR><TD ALIGN="RIGHT">5</TD></TR>
+    </TABLE>>];
+
+    pupper_ref [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" WIDTH="200" CELLPADDING="5">
+        <TR><TD BGCOLOR="#e8da89" COLSPAN="2" WIDTH="200">Ref::&lt;dyn Doggo&gt;<BR/>::new(&amp;bluey)</TD></TR>
+        <TR><TD ALIGN="LEFT">data: &amp;???</TD><TD ALIGN="RIGHT" PORT="data">0x7ffff000</TD></TR>
+        <TR><TD ALIGN="LEFT">meta: &amp;Vtable</TD><TD ALIGN="RIGHT" PORT="meta">0xB0001020</TD></TR>
+    </TABLE>>];
+    woofer_ref [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" WIDTH="200" CELLPADDING="5">
+        <TR><TD BGCOLOR="#e8da89" COLSPAN="2" WIDTH="200">Ref::&lt;dyn Doggo&gt;<BR/>::new(&amp;reginald)</TD></TR>
+        <TR><TD ALIGN="LEFT">data: &amp;???</TD><TD ALIGN="RIGHT" PORT="data">0x7ffff010</TD></TR>
+        <TR><TD ALIGN="LEFT">meta: &amp;Vtable</TD><TD ALIGN="RIGHT" PORT="meta">0xB0001034</TD></TR>
+    </TABLE>>];
+    woofer2_ref [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" WIDTH="200" CELLPADDING="5">
+        <TR><TD BGCOLOR="#e8da89" COLSPAN="2" WIDTH="200">Ref::&lt;dyn Doggo&gt;<BR/>::new(&amp;chester)</TD></TR>
+        <TR><TD ALIGN="LEFT">data: &amp;???</TD><TD ALIGN="RIGHT" PORT="data">0x7ffff010</TD></TR>
+        <TR><TD ALIGN="LEFT">meta: &amp;Vtable</TD><TD ALIGN="RIGHT" PORT="meta">0xB0001034</TD></TR>
+    </TABLE>>];
+
+    pupper_vtable [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" WIDTH="200" CELLPADDING="5">
+        <TR><TD BGCOLOR="#8996e8" COLSPAN="2" WIDTH="200">&lt;Pupper as dyn Doggo&gt;<BR/>tinydyn vtable</TD></TR>
+        <TR HEIGHT="0" WIDTH = "200" FIXEDSIZE="TRUE"><TD BORDER="0" CELLPADDING="0" PORT="head" HEIGHT="0" COLSPAN="2"></TD></TR>
+        <TR><TD ALIGN="LEFT">wag: fn</TD><TD ALIGN="RIGHT">0x80001000</TD></TR>
+        <TR><TD ALIGN="LEFT">bark: fn</TD><TD ALIGN="RIGHT">0x80001020</TD></TR>
+    </TABLE>>];
+    woofer_vtable [label=<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" WIDTH="200" CELLPADDING="5">
+        <TR><TD BGCOLOR="#8996e8" COLSPAN="2" WIDTH="200">&lt;Woofer as dyn Doggo&gt;<BR/>tinydyn vtable</TD></TR>
+        <TR HEIGHT="0" WIDTH = "200" FIXEDSIZE="TRUE"><TD BORDER="0" CELLPADDING="0" PORT="head" HEIGHT="0" COLSPAN="2"></TD></TR>
+        <TR><TD ALIGN="LEFT">wag: fn</TD><TD ALIGN="RIGHT">0x80002080</TD></TR>
+        <TR><TD ALIGN="LEFT">bark: fn</TD><TD ALIGN="RIGHT">0x80002020</TD></TR>
+    </TABLE>>];
+
+
+
+    woofer_ref:data -> woofer:head;
+    woofer2_ref:data -> woofer2:head;
+    pupper_ref:data -> pupper:head;
+    woofer_ref:meta -> woofer_vtable:head;
+    woofer2_ref:meta -> woofer_vtable:head;
+    pupper_ref:meta -> pupper_vtable:head;
+}

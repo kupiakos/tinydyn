@@ -12,128 +12,95 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//! Tiny dynamic dispatch for embedded use.
+//! Lightweight dynamic dispatch, intended for embedded use.
 //!
 //! [`Ref<dyn Trait>`] and [`RefMut<dyn Trait>`] wrap a pointer and metadata necessary to call
 //! trait methods, and [`Deref`] into a _tinydyn trait object_ that implements the `Trait`.
 //!
 //! Traits must currently opt-in by annotating with [`tinydyn`].
-//! This defines an alternate, lighter weight vtable, and if the trait has one method, eliminates
+//! This defines an alternate, lighter weight [vtable], and if the trait has one method, eliminates
 //! it entirely by putting the function pointer inline.
 //! This does not affect normal behavior of the trait, and can still be made into a `dyn Trait`.
 //! This, however, would be wasteful.
 //!
+//! [vtable]: https://en.wikipedia.org/wiki/Virtual_method_table
+//!
 //! # Example
+//!
 //! ```ignore  TODO figure out why this is broken
-//! # use tinydyn::{tinydyn, Ref};
+//! use tinydyn::{tinydyn, Ref, RefMut};
+//!
 //! #[tinydyn]
-//! trait Foo {
-//!     fn blah(&self) -> i32;
-//!     fn blue(&self) -> i32 { 10 }
-//! }
-//! impl Foo for i32 {
-//!     fn blah(&self) -> i32 { *self + 1 }
+//! trait Spam {
+//!     fn ham(&mut self) -> i32;
+//!     fn eggs(&self) -> i32 { 10 }
 //! }
 //!
-//! // Like upcasting to `&dyn Foo`, but with a tinydyn vtable.
-//! let x: Ref<dyn Foo> = Ref::new(&15);
-//! assert_eq!(x.blah(), 16);
-//! assert_eq!(x.blue(), 10);
+//! impl Spam for i32 {
+//!     fn ham(&self) -> i32 {
+//!         *self += 2;
+//!         *self - 1
+//!     }
+//! }
+//!
+//! let mut x = 15;
+//!
+//! // Like upcasting to `&dyn Foo`, but with a lighter weight vtable.
+//! let mut mutable: RefMut<dyn Foo> = RefMut::new(&mut x);
+//! assert_eq!(mutable.ham(), 16);
+//! assert_eq!(mutable.eggs(), 10);
+//!
+//! // mutable.into() would instead consume and have the same lifetime as `mutable`
+//! let shared: Ref<dyn Foo> = mutable.as_ref();
+//! assert_eq!(shared.eggs(), 10);
+//! // Cannot call `shared.ham()` as it's a shared ref and can't call `&mut self` methods.
+//!
+//! assert_eq!(x, 17);
 //! ```
 //!
-//! # Space Savings
+//! ## Planned features
 //!
-//! TODO: numbers on a real large project
+//! ⚠️ **This library is not yet tested enough to be production ready** ⚠️
 //!
-//! For every trait and concrete type which upcasts into that trait, Rust creates a new vtable.
-//! Each vtable includes 3 extra words of layout and drop info. These aren't needed, so tinydyn's
-//! custom vtables do not include them.
+//! - [x] `&self` and `&mut self` methods
+//! - [x] `+ Send` and `+ Sync` trait objects
+//! - [x] lifetime `where` bounds on methods
+//! - [x] lifetime generics on methods
+//! - [ ] implementing on foreign traits/custom vtables
+//! - [ ] implementations for common `core`/`std` traits
+//!       (never `core::fmt::{Debug, Display}` as they use `&dyn`)
+//! - [ ] generics on the trait
+//! - [ ] associated types
+//! - [ ] supertraits
+//!     - [ ] upcasting `Ref<dyn Subtrait>` to `Ref<dyn Supertrait>`
+//! - [ ] `Pin<&mut self>` and similar non-reference object-safe receivers
+//! - [ ] `where` bounds on the trait
+//! - [ ] `where Self: Sized` methods (and appropriate exclusion from the vtable)
+//!     - [ ] non-lifetime generics on methods
+//!     - [ ] non-lifetime `where` bounds on methods
+//!     - [ ] An attribute to manually exclude a method from a vtable, necessary for bounds
+//!           including subtraits or aliases of `Sized`
+//! - [ ] An `tinydyn(inline_vtable[ = "all"])` attribute to force inlining of the vtable into the
+//!       wide pointer. This would require the metadata type to always be carried in the trait.
+//! - [ ] Put `Ref` vtables inline even if `RefMut` won't. Ex: 1 `&self` and 1 `&mut self` method.
+//! - [ ] UI tests to ensure proper rejection and error message quality
 //!
-//! In addition, tinydyn places the vtable inline in `Ref[Mut]` if it has only one method.
-//! This saves a dereference when making the virtual call as well as removing the need for a static
-//! vtable to allocate - truly as zero-cost as dynamic dispatch can get!
+//! ### Implementing on foreign traits
 //!
-//! # Design
-//!
-//! ## Features supported
-//! - `&self` and `&mut self` methods
-//! - `+ Send` and `+ Sync` trait objects
-//! - lifetime `where` bounds on methods
-//! - lifetime generics on methods
-//!
-//! ## Features not yet implemented, but planned
-//! - custom vtables/implementing on foreign traits
-//! - implementations for common `core`/`std` traits
-//!   (not `core::fmt::{Debug, Display}` as they use `&dyn`)
-//! - generics on the trait
-//! - associated types
-//! - supertraits
-//! - `Pin<&mut self>` and similar non-reference object-safe receivers
-//! - `where` bounds on the trait
-//! - `where Self: Sized` methods (and appropriate exclusion from the vtable)
-//!     - non-lifetime generics on methods
-//!     - non-lifetime `where` bounds on methods
-//!
-//! ### Foreign traits
-//!
-//! Implementing on foreign traits is not yet supported, and is an ergonomic and safety challenge.
+//! Implementing on foreign traits is not yet supported, and is an ergonomic and safety challenge
+//! to get right, especially with regards to default methods.
 //! As a workaround, you can create a local helper trait that contains the desired methods and
 //! blanket implements for all `T: TargetTrait`.
-//! This functionality might be added by tinydyn in the future, or a better solution.
-//! Supertraits have a similar workaround.
+//! This functionality might be added by tinydyn in the future, or a better solution like defining
+//! custom local vtables for foreign traits.
+//! Traits with supertraits that wish to use this version of `tinydyn` have a similar workaround.
 //!
-//! ## Double Pointer
-//! For safety reasons, the unsized trait object that [`Ref`]/ [`RefMut`] deref into is a
-//! pointer to the trait object, creating a double pointer to the object. So, while you _can_ turn
-//! them into a `&(impl Trait + ?Sized)`, that will be marginally larger code size if not optimized.
+//! ## Design
 //!
-//! ## Why can't `dyn Trait` be made smaller as an optimization?
+//! See the [README] for how this library is designed and works.
 //!
-//! `dyn Trait` requires a vtable be generated for each combination of
-//! concrete type and trait. This vtable includes 3 words of information that can't
-//! be removed in order for Rust to work with it:
-//! - The type's size. Returned by [`core::mem::size_of_val`] and used to drop.
-//! - The type's alignment, needed to calculate the field offset of a `dyn Trait` located at the
-//!   end of a struct.
-//!   Returned by [`core::mem::align_of_val`] and used to drop.
-//! - The drop glue, used to drop and equivalent to `ptr::drop_in_place::<Concrete>`.
-//!
-//! Most of this is about `Drop` glue, only relevant for use in a `Box`, as well as the already
-//! stabilized size/align getters for the type for unsafe code to manipulate it (soundly).
-//!
-//! In theory, `rustc` could identify that a trait object's size, align, and drop glue are never
-//! accessed throughout the whole program and remove them from the vtable, possibly even inlining
-//! the vtable as tinydyn does. However, rustc is averse to global analysis, preferring to leave
-//! this to LLVM; and LLVM doesn't know how trait object vtables are formatted.
-//!
-//! These are requirements tinydyn doesn't have to uphold. It doesn't have a `Box`.
-//!
-//! ## A trait object that doesn't know its size
-//!
-//! Since tinydyn trait objects don't know the size or alignment of what they point to, no
-//! reference to the concrete type can be made while the type is erased.
-//!
-//! So, in order for the tinydyn trait object to implement a trait, the implementer itself has to
-//! have an erased pointer type. If that pointer type is sized, however, that comes with its own set
-//! of issues. You can [swap](`core::mem::swap`) two `Sized` references, and trait object-unsafe
-//! functions marked with `where Self: Sized` are now available to call, even though there's no
-//! possible implementation.
-//!
-//! tinydyn trait objects do this with a specific design:
-//! - They're primarily referenced through the [`Ref`] and [`RefMut`] types, which hold the data
-//! pointer and metadata needed to call trait methods with no overhead.
-//! - These don't implement the trait, but `Deref` into a `!Sized` wrapper object that does,
-//! called the *dyn wrapper*.
-//! - The dyn wrapper holds same pointer as the `Ref[Mut]`,
-//! so the `Deref` creates a double reference to avoid creating a direct reference to the target.
-//! - The deref wrapper object is discouraged from being used through reference like trait objects
-//! normally are. Not only does it have an inaccurate `size_of_val` and `align_of_val`, it is
-//! a double pointer and is more expensive to use directly.
-//! - The vtable-calling functions are marked `#[inline(always)]` so the double pointer created
-//! when calling trait methods is detected as unnecessary and optimized away by LLVM.
-//!
-//! This fake layout and double dereference is, in the end, a necessary design decision for
-//! soundness.
+//! [README]: https://github.com/kupiakos/tinydyn/blob/main/README.md
+#![no_std]
 #![warn(unsafe_op_in_unsafe_fn)]
 #![warn(missing_docs)]
 
@@ -142,10 +109,42 @@ use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut};
 use core::ptr::NonNull;
 
+// This contains types that may change at any time without a breaking library change,
+// but must be exposed so macros can reference them.
+// If you're naming types from here yourself, beware.
 #[doc(hidden)]
 #[path = "private.rs"]
 pub mod __private;
 
+/// Marks a local trait as tinydyn-aware, letting it be used inside of [`Ref`] and [`RefMut`].
+///
+/// This implements [`DynTrait`] and [`PlainDyn`] for the targeted trait object.
+/// This defines an alternate smaller vtable layout that erases layout and drop information.
+///
+/// While you *can* use tinydyn-aware traits as regular `dyn Trait` trait objects, it's not
+/// recommended as it creates two vtables.
+///
+/// # Example
+///
+/// ```ignore
+/// use tinydyn::{self, tinydyn};
+///
+/// #[tinydyn]
+/// trait Foo {
+///     fn blah(&self) -> i32;
+///     fn blue(&self) -> i32 { 10 }
+/// }
+///
+/// impl Foo for i32 {
+///     fn blah(&self) -> i32 { *self + 1 }
+/// }
+///
+/// // Use `dyn Foo` to reference the trait `Foo` even though it never creates the
+/// // regular vtable for `dyn Foo`.
+/// let x: tinydyn::Ref<dyn Foo> = Ref::new(&15);
+/// assert_eq!(x.blah(), 16);
+/// assert_eq!(x.blue(), 10);
+/// ```
 pub use tinydyn_derive::tinydyn;
 
 use __private::DynTarget;
@@ -159,6 +158,9 @@ type LocalWrap<Trait, T> = <<Trait as DynTrait>::Plain as PlainDyn>::LocalNewtyp
 ///
 /// `Ref<dyn Trait>` can call the `&self` methods of `Trait` through its `Deref` impl.
 /// It can also be freely cloned and copied like a `&dyn Trait`.
+///
+/// Prefer passing this around rather than calling `deref` and passing around that reference
+/// - that would create a double pointer.
 #[repr(C)]
 pub struct Ref<'a, Trait: ?Sized + DynTrait> {
     inner: DynPtr<'a, Trait>,
@@ -224,6 +226,7 @@ impl<'a, Trait: ?Sized + DynTrait + Sync + 'a> Ref<'a, Trait> {
     }
 }
 
+// TODO: consider allowing the `Ref` lifetime to be smaller here
 impl<'a, Trait: ?Sized + DynTrait> From<RefMut<'a, Trait>> for Ref<'a, Trait> {
     fn from(value: RefMut<'a, Trait>) -> Self {
         Ref {
@@ -254,6 +257,9 @@ where
 ///
 /// Like `&mut dyn Trait`, this cannot be cloned or copied. It can, however, be [reborrowed].
 ///
+/// Prefer passing this around rather than calling `deref_mut` and passing around that reference
+/// - that would create a double pointer.
+///
 /// [reborrowed]: RefMut::as_mut
 #[repr(transparent)]
 pub struct RefMut<'a, Trait: ?Sized + DynTrait> {
@@ -262,7 +268,6 @@ pub struct RefMut<'a, Trait: ?Sized + DynTrait> {
 }
 
 impl<'a, Trait: ?Sized + DynTrait + 'a> Deref for RefMut<'a, Trait> {
-    // type Target = LocalWrap<Trait, DynPtr<'a, Trait>>;
     type Target = DynTarget<Trait>;
 
     /// It's not recommended to hold onto the result of this `deref`, as it creates a
