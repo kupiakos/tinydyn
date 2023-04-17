@@ -1,4 +1,4 @@
-Regenerate with `dot -Tsvg -O *.dot`.
+Regenerate with `dot -Tsvg -O *.dot`. Optimize with `svg *.svg`.
 
 [graphviz] must be installed.
 

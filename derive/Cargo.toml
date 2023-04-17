@@ -14,7 +14,7 @@
 
 [package]
 name = "tinydyn_derive"
-version = "0.1.0"
+version = "0.1.1"
 description = "Derive glue for tinydyn, a lightweight dynamic dispatch library"
 license = "Apache-2.0"
 repository = "https://github.com/kupiakos/tinydyn/derive/"

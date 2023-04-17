@@ -14,16 +14,17 @@
 
 [package]
 name = "tinydyn"
-version = "0.1.0"
+version = "0.1.1"
 description = "A lightweight dynamic dispatch library"
 license = "Apache-2.0"
 repository = "https://github.com/kupiakos/tinydyn/"
 edition = "2021"
-keywords = ["vtable", "dynamic dispatch", "dyn", "embedded"]
+keywords = ["vtable", "dynamic-dispatch", "dyn", "embedded"]
 categories = ["embedded", "no-std", "rust-patterns"]
+readme = ".cargo.README.md"
 
 [dependencies]
-tinydyn_derive = { path = "derive", version = "0.1.0" }
+tinydyn_derive = { path = "derive", version = "0.1.1" }
 
 [workspace]
 members = ["derive"]
