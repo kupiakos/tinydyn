@@ -19,6 +19,8 @@ description = "A lightweight dynamic dispatch library"
 license = "Apache-2.0"
 repository = "https://github.com/kupiakos/tinydyn/"
 edition = "2021"
+keywords = ["vtable", "dynamic dispatch", "dyn", "embedded"]
+categories = ["embedded", "no-std", "rust-patterns"]
 
 [dependencies]
 tinydyn_derive = { path = "derive", version = "0.1.0" }
